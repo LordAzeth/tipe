@@ -94,6 +94,31 @@ image* soustraction_image(image* im1, image* im2){
     return res;
 }
 
+image* detection_mvt(image* im1, image* im2){
+    image* res = (image*)malloc(sizeof(image));
+    res->pix = (uint16_t**) malloc(im1->haut * sizeof(uint16_t*));
+    for (int i=0; i<im1->haut; i++){
+        res->pix[i]=(uint16_t*)malloc(res->larg * sizeof(uint16_t));
+    }
+    res->haut = im1->haut;
+    res->larg = im1->larg;
+    res->max_couleur = 255;
+    for (int i=0; i<im1->haut; i++){
+        for (int j=0; j<im2->larg; j++){
+            if (im1->pix[i][j] != im2->pix[i][j]){
+                res->pix[i][j] = 255; 
+    printf("nn");
+            }
+            else{
+                res->pix[i][j] = 0;
+    printf(" %d-%d ", i, j);
+            }
+        }
+    }
+    printf("test");
+    return res;
+}
+
 int main(){
     printf("Debut du programme.\n");
   
@@ -105,8 +130,10 @@ int main(){
     printf("Difference 1 a 2 : %d\n", nombre_pixel_differents(im1, im2));
     
     image* differenceim1im2 = soustraction_image(im1, im2);
+    image* detect_mouv1 = detection_mvt(im1, im2);
 
-    sauvegarder_image("new_image.pgm", differenceim1im2);
+    //sauvegarder_image("new_image.pgm", differenceim1im2);
+    sauvegarder_image("new_image.pgm", detect_mouv1);
     printf("\nFin du programme.");
     return 0;
 }
