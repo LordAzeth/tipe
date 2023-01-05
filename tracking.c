@@ -16,6 +16,28 @@ struct image {
 
 typedef struct image image;
 
+void liberer_grille(int** tableau, int hauteur){
+    for (int a=0; a<hauteur; a++){
+        free(tableau[a]);
+    }
+    free(tableau);
+}
+
+void liberer_image(image* img){
+    for (int a=0; a<img->haut; a++){
+        free(img->pix[a]);
+    }
+    free(img->pix);
+    free(img);
+}
+
+void liberer_tab_image(image** tab_img, int taille_tab){
+    for (int a=0; a<taille_tab; a++){
+        liberer_image(tab_img[a]);
+    }
+    free(tab_img);
+}
+
 image* charger_image(char* fichier){
     FILE* f = fopen(fichier, "r");
     image* res = (image*)malloc(sizeof(image));
@@ -140,38 +162,56 @@ image** conversion_tab_image(char** tab_nom, int taille_tab){
     return tab_image;
 }
 
-image* detection_fond(image** tab_image, int taille_tab){
+
+int** tab_moyenne(image** tab_image, int taille_tab){
     int hauteur = tab_image[0]->haut;
     int largeur = tab_image[0]->larg;
-    image* res = creer_image(hauteur, largeur);
-
     int** tab_moyenne = (int**) malloc (hauteur * sizeof(int*));
     for (int a=0; a<hauteur; a++){
         tab_moyenne[a] = (int*) malloc(largeur* sizeof(int));
         for (int b=0; b<largeur; b++){
             tab_moyenne[a][b] = 0;
             for (int im=0; im<taille_tab; im++){
+            printf("a = %d, b = %d, im = %d\n", a, b, im);
                 tab_moyenne[a][b] += tab_image[im]->pix[a][b];
             }
             tab_moyenne[a][b] = tab_moyenne[a][b] / taille_tab;
         }
     }
+    printf("bug5\n");
+    return tab_moyenne;
+}
 
+int** tab_ecart_type(image** tab_image, int taille_tab, int** tab_moyenne){
+    int hauteur = tab_image[0]->haut;
+    int largeur = tab_image[0]->larg;
     int** tab_ecart_type = (int**) malloc (hauteur * sizeof(int*));
     for (int a=0; a<hauteur; a++){
         tab_ecart_type[a] = (int*) malloc(largeur* sizeof(int));
         for (int b=0; b<largeur; b++){
             tab_ecart_type[a][b] = 0;
             for (int im=0; im<taille_tab; im++){
-                tab_ecart_type += (tab_image[im]->pix[a][b] - tab_moyenne[a][b]) * (tab_image[im]->pix[a][b] - tab_moyenne[a][b]);
+                tab_ecart_type[a][b] += (tab_image[im]->pix[a][b] - tab_moyenne[a][b]) * (tab_image[im]->pix[a][b] - tab_moyenne[a][b]);
             }
             tab_ecart_type[a][b] = tab_ecart_type[a][b] / (taille_tab - 1);
             tab_ecart_type[a][b] = sqrt(tab_ecart_type[a][b]);
-            res->pix[a][b] = tab_ecart_type[a][b];
-            /* IL FAUT CORRIGER CETTE FONCTION QUI DOIT NE RENVOIE PAS LES BONS PIXELS ACTUELLEMENT */
         }
     }
+    return tab_ecart_type;
+}
 
+image* detection_mvt_par_fond(image* img, int** tab_ecart_type, int** tab_moyenne){
+    int hauteur = img->haut;
+    int largeur = img->larg;
+    image* res = creer_image(hauteur, largeur);
+
+    for (int a=0; a<hauteur; a++){
+        for (int b=0; b<largeur; b++){
+            if ((img->pix[a][b] > tab_moyenne[a][b] + tab_ecart_type[a][b]) || (img->pix[a][b] < tab_moyenne[a][b] - tab_ecart_type[a][b])){
+                res->pix[a][b] = 255;
+            }
+        }
+    }
     return res;
 }
 
@@ -194,6 +234,11 @@ int main(){
     sauvegarder_image("new_image2.pgm", detect_mouv1);
     */
 
+    /*
+    printf("-----------------------------\n");
+    printf("PREMIER TEST\n");
+    printf("-----------------------------\n");
+
     int nb_image_fond = 5;
     char** tab_nom = (char**) malloc(nb_image_fond * sizeof(char*)); 
     for (int i=0; i<nb_image_fond; i++){
@@ -208,14 +253,82 @@ int main(){
     for (int i=0; i<nb_image_fond; i++){
         printf("%s\n", tab_nom[i]);
     }
-    
     image** tab_img = conversion_tab_image(tab_nom, nb_image_fond);
 
-    for (int i=0; i<nb_image_fond; i++){
-        printf("%d\n", tab_img[i]->pix[5][1]);
+    int** tab_moy = tab_moyenne(tab_img, nb_image_fond);
+    int** tab_et = tab_ecart_type(tab_img, nb_image_fond, tab_moy);
+
+    image* img5 = charger_image("mvtfond5.pgm");
+    image* detect_img5 = detection_mvt_par_fond(img5, tab_et, tab_moy);
+    sauvegarder_image("res.pgm", detect_img5);
+
+
+    printf("\ndebut free : ");
+    liberer_grille(tab_moy, tab_img[0]->haut);
+    printf("1 - ");
+    liberer_grille(tab_et, tab_img[0]->haut);
+    printf("2 - ");
+    free(tab_nom);
+    printf("3 - ");
+    liberer_tab_image(tab_img, nb_image_fond);
+    printf("4 - ");
+    free(img5);
+    free(detect_img5);
+    printf("fin free\n");
+
+    */
+
+    printf("-----------------------------\n");
+    printf("DEUXIEME TEST\n");
+    printf("-----------------------------\n");
+
+    int nb_image_fond2 = 7;
+    char** tab2_nom = (char**) malloc(nb_image_fond2 * sizeof(char*)); 
+    for (int i=0; i<nb_image_fond2; i++){
+        tab2_nom[i] = (char*) malloc(12*sizeof(char));
     }
-    image* fond = detection_fond(tab_img, nb_image_fond);
-    sauvegarder_image("fond0", fond);
+    tab2_nom[0] = "testbruit0.pgm";
+    tab2_nom[1] = "testbruit1.pgm";
+    tab2_nom[2] = "testbruit2.pgm";
+    tab2_nom[3] = "testbruit3.pgm";
+    tab2_nom[4] = "testbruit4.pgm";
+    tab2_nom[5] = "testbruit5.pgm";
+    tab2_nom[6] = "testbruit6.pgm";
+
+    printf("crash test\n");
+    for (int i=0; i<nb_image_fond2; i++){
+        printf("%s\n", tab2_nom[i]);
+    }
+    printf("crash test\n");
+    image** tab2_img = conversion_tab_image(tab2_nom, nb_image_fond2);
+
+    printf("crash mhein\n");
+
+    int** tab2_moy = tab_moyenne(tab2_img, nb_image_fond2);
+    printf("crash mhein\n");
+    int** tab2_et = tab_ecart_type(tab2_img, nb_image_fond2, tab2_moy);
+
+    printf("crash test\n");
+    image* imtestbruit4 = charger_image("testbruit4.pgm");
+    image* detect_testbruit4 = detection_mvt_par_fond(imtestbruit4, tab2_et, tab2_moy);
+    sauvegarder_image("res_test_bruit4.pgm", detect_testbruit4);
+
+    printf("crash test\n");
+
+
+    printf("\ndebut free : ");
+    liberer_grille(tab2_moy, tab2_img[0]->haut);
+    printf("1 - ");
+    liberer_grille(tab2_et, tab2_img[0]->haut);
+    printf("2 - ");
+    free(tab2_nom);
+    printf("3 - ");
+    liberer_tab_image(tab2_img, nb_image_fond2);
+    printf("4 - ");
+    free(imtestbruit4);
+    free(detect_testbruit4);
+    printf("fin free\n");
+
 
     printf("\nFin du programme.");
     return 0;
